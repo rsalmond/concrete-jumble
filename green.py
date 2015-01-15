@@ -5,9 +5,6 @@ find green pixel value in an image by most common shade or most green intensity 
 import sys
 from PIL import Image
 
-def img(filename):
-    return Image.open(filename)
-
 def hexencode(rgb):
     r=rgb[0]
     g=rgb[1]
@@ -21,6 +18,20 @@ def is_green(rgb):
 def greenness(rgb):
     if is_green(rgb):
         return rgb[1] - (rgb[0] + rgb[2])
+
+def avg_green(colors):
+    greenvals = []
+    for count, rgb in colors:
+        gn = greenness(rgb)
+        if gn:
+            for i in range(count):
+                greenvals.append(gn)
+
+    total = 0
+    for val in greenvals:
+        total += val
+
+    return total / len(greenvals)
 
 def commoncolor(colors, green_thresh=0):
     # loop the color histogram for the most commonly occuring shade of green
@@ -42,8 +53,29 @@ def commoncolor(colors, green_thresh=0):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        im = img(sys.argv[1])
-        h, w = im.size
-        colors = im.getcolors(h*w)
+
+        source_im = Image.open(sys.argv[1])
+        dest_im = Image.new('RGBA', source_im.size)
+        h, w = source_im.size
+
+        dest_im.paste(source_im)
+
+        dest_pix = dest_im.load()
+
+        print "width: %s, height: %s" % (w, h)
+
+        colors = source_im.getcolors(h*w)
+
+        green_thresh = avg_green(colors)
+
+        print "average green: %s" % (green_thresh)
+
+        for x in range(w):
+            for y in range(h):
+                if greenness(dest_pix[y,x]) > green_thresh:
+                    dest_pix[y,x] = (0,0,0,0)
+
+        dest_im.save('out.png', 'PNG')
+        exit(0)
         #print "lencols: %s" % (len(colors))
         print commoncolor(colors, green_thresh=30)
