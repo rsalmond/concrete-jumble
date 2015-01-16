@@ -15,6 +15,8 @@ green_pixels = cv2.inRange(im, l_green, u_green)
 
 contours, hierarchy = cv2.findContours(green_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+#TODO: iterate contours and find the one with the largest area then clip image to that box
+
 cv2.drawContours(im, contours, -1, (0,0,255), 5)
 
 cv2.imwrite(outfile, im)
