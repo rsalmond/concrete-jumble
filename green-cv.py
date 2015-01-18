@@ -53,10 +53,8 @@ def get_tlbr_from_poly(polygon, inner=False):
     return top, left, bottom, right
 
 def get_cropped_img(image, polygon):
-    """ return an RBGA crop of image at points in polygon """
-    #outer = get_tlbr_from_poly(polygon)
+    """ return new image cropped at points in polygon """
     top, left, bottom, right = get_tlbr_from_poly(polygon, inner=True)
-
     return image[top:bottom, left:right]
 
 if __name__ == '__main__':
@@ -66,8 +64,8 @@ if __name__ == '__main__':
     u_green = np.array([75,255,255], np.uint8)
 
     # load image file and convert it to HSV colorspace
-    im = cv2.imread(sys.argv[1])
-    im = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+    source_im = cv2.imread(sys.argv[1], -1)
+    im = cv2.cvtColor(source_im, cv2.COLOR_BGR2HSV)
 
     # carve out everything not in the green range
     green_pixels = cv2.inRange(im, l_green, u_green)
@@ -79,13 +77,12 @@ if __name__ == '__main__':
     lpoly = largest_poly(contours)
 
     # create a new image cropped to the boundaries of the greenscreen polygon
-    out_im = get_cropped_img(im, lpoly)
-
-    # create and execute mask to discard all greenscreen pixels
-    green_mask = cv2.inRange(out_im, l_green, u_green)
+    out_im = get_cropped_img(source_im, lpoly)
+    
+    # create and execute mask from temp img to discard all greenscreen pixels on original img
+    mask_im = get_cropped_img(im, lpoly)
+    green_mask = cv2.inRange(mask_im, l_green, u_green)
     green_mask = 255 - green_mask
     out_im = cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
-    # return to BGR color and save
-    out_im = cv2.cvtColor(out_im, cv2.COLOR_HSV2BGR)
     cv2.imwrite(outfile, out_im)
