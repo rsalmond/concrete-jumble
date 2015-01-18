@@ -69,15 +69,23 @@ if __name__ == '__main__':
     im = cv2.imread(sys.argv[1])
     im = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
 
-    #carve out everything not in the green range
+    # carve out everything not in the green range
     green_pixels = cv2.inRange(im, l_green, u_green)
 
+    # collect contour data for all blobs of green
     contours, hierarchy = cv2.findContours(green_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+    # assume the biggest one is the greenscreen
     lpoly = largest_poly(contours)
 
-    cv2.drawContours(im, lpoly, -1, draw_color, 10)
+    # create a new image cropped to the boundaries of the greenscreen polygon
     out_im = get_cropped_img(im, lpoly)
 
+    # create and execute mask to discard all greenscreen pixels
+    green_mask = cv2.inRange(out_im, l_green, u_green)
+    green_mask = 255 - green_mask
+    out_im = cv2.bitwise_and(out_im, out_im, mask=green_mask)
+
+    # return to BGR color and save
     out_im = cv2.cvtColor(out_im, cv2.COLOR_HSV2BGR)
     cv2.imwrite(outfile, out_im)
