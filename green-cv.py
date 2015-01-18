@@ -24,9 +24,29 @@ def largest_poly(contours):
     return biggest_blob
 
 
+def get_cropped_img(image, polygon):
+    """ return an RBGA crop of image at points in polygon """
+
+    xs, ys = [], []
+    for point in polygon:
+        xs.append(point[0][0])
+        ys.append(point[0][1])
+
+    xs.sort()
+    ys.sort()
+
+    top = ys[0]
+    bottom = ys[len(ys) - 1]
+    left = xs[0]
+    right = xs[len(xs) - 1]
+
+    return image[top:bottom, left:right]
+
+
 if __name__ == '__main__':
     outfile = 'test/img/out.png'
-    draw_color = (255,0,0)
+
+    draw_color = (90,0,0)
 
     l_green = np.array([45,0,0], np.uint8)
     u_green = np.array([75,255,255], np.uint8)
@@ -39,6 +59,10 @@ if __name__ == '__main__':
     green_pixels = cv2.inRange(im, l_green, u_green)
 
     contours, hierarchy = cv2.findContours(green_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(im, largest_poly(contours), -1, draw_color, 50)
 
-    cv2.drawContours(im, largest_poly(contours), -1, draw_color, 25)
-    cv2.imwrite(outfile, im)
+    out_im = get_cropped_img(im, largest_poly(contours))
+
+
+    out_im = cv2.cvtColor(out_im, cv2.COLOR_HSV2BGR)
+    cv2.imwrite(outfile, out_im)
