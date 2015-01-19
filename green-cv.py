@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 draw_color = (27, 255, 255)
-
+debug = False
 
 def commoncolor(colors, green_thresh=0):
     # loop the color histogram for the most commonly occuring shade of green
@@ -74,47 +74,65 @@ def get_cropped_img(image, polygon):
     top, left, bottom, right = get_tlbr_from_poly(polygon, inner=True)
     return image[top:bottom, left:right]
 
+def crop_to_greenscreen(image, green_pixels):
+    """ create a crop of image to the largest green area found by using the provided green pixels """
+    # collect contour data for all blobs of green
+    tmp_green = np.copy(green_pixels)
+    contours, hierarchy = cv2.findContours(tmp_green, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    if debug:
+        cv2.drawContours(image, contours, -1, (0, 0, 255, 255), 1)
+
+    # assume the biggest one is the greenscreen
+    lpoly = largest_poly(contours)
+
+    # return image and mask cropped to the boundaries of the greenscreen polygon
+    # NOTE: bitflip the mask here to remove the green when applied and leave the nongreen
+    return get_cropped_img(source_im, lpoly), 255 - get_cropped_img(green_pixels, lpoly)
+
+def greenscreen_by_method1(image):
+    # for HSV colorspace
+    #im = cv2.cvtColor(source_im, cv2.COLOR_BGR2HSV)
+    #l_green = np.array([45,0,0], np.uint8)
+    #u_green = np.array([75,255,255], np.uint8)
+
+    # for BGR colorspace
+    l_green = np.array([0, 50, 0, 255], np.uint8)
+    u_green = np.array([80, 255, 80, 255], np.uint8)
+
+    # get all the greens that fall into the lower/upper range and use them to isolate greenscreen
+    green_pixels = cv2.inRange(image, l_green, u_green)
+    out_im, green_mask = crop_to_greenscreen(image, green_pixels)
+
+    # mask away the greenscreen pixels from the cropped image leaving only the letters
+    return cv2.bitwise_and(out_im, out_im, mask=green_mask)
+
+def greenscreen_by_method2(image):
+
+    # compute green channel minus blue channel (works well, not sure why!)
+    green_channel = cv2.split(image)[1] - cv2.split(image)[0]
+
+    # compute green channel minus red channel too (works badly, no idea!)
+    #green_channel = green_channel - cv2.split(im)[2]
+
+    # take a totally arbitrary range of single channel intensities which seems to capture 
+    # the greenscreen area
+    green_pixels = cv2.inRange(green_channel, np.array([50], np.uint8), np.array([200], np.uint8))
+
+    out_im, green_mask = crop_to_greenscreen(image, green_pixels)
+    
+    # create and execute mask from temp img to discard all greenscreen pixels on original img
+    return cv2.bitwise_and(out_im, out_im, mask=green_mask)
+
+
 if __name__ == '__main__':
-    outfile = 'test/img/out.png'
+    outfile = 'test/img/out_%s.png'
 
     # load image file and convert it to HSV colorspace
     source_im = cv2.imread(sys.argv[1], -1)
     im = np.copy(source_im)
 
-    #im = cv2.cvtColor(source_im, cv2.COLOR_BGR2HSV)
-    #l_green = np.array([45,0,0], np.uint8)
-    #u_green = np.array([75,255,255], np.uint8)
+    cv2.imwrite(outfile % (1), greenscreen_by_method1(im))
+    cv2.imwrite(outfile % (2), greenscreen_by_method2(im))
 
-    green_channel = cv2.split(im)[1] - cv2.split(im)[0]
-    #green_channel = green_channel - cv2.split(im)[2]
-    #green_channel = 255 - green_channel
-    green_pixels = cv2.inRange(green_channel, np.array([50], np.uint8), np.array([200], np.uint8))
-    #cv2.imwrite(outfile, green_wut)
-    #exit(0)
 
-    l_green = np.array([0, 50, 0, 255], np.uint8)
-    u_green = np.array([80, 255, 80, 255], np.uint8)
-
-    # carve out everything not in the green range
-    #green_pixels = cv2.inRange(im, l_green, u_green)
-
-    # collect contour data for all blobs of green
-    contours, hierarchy = cv2.findContours(green_pixels, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    #cv2.drawContours(source_im, contours, -1, (0, 0, 255, 255), 1)
-
-    # assume the biggest one is the greenscreen
-    lpoly = largest_poly(contours)
-
-    # create a new image cropped to the boundaries of the greenscreen polygon
-    out_im = get_cropped_img(source_im, lpoly)
-    
-    # create and execute mask from temp img to discard all greenscreen pixels on original img
-    mask_im = get_cropped_img(im, lpoly)
-    #green_mask = cv2.inRange(mask_im, l_green, u_green)
-    green_out_im = cv2.split(mask_im)[1] - cv2.split(mask_im)[0]
-    green_mask = cv2.inRange(green_out_im, np.array([50], np.uint8), np.array([200], np.uint8))
-    green_mask = 255 - green_mask
-    out_im = cv2.bitwise_and(out_im, out_im, mask=green_mask)
-
-    cv2.imwrite(outfile, out_im)
