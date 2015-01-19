@@ -107,32 +107,63 @@ def greenscreen_by_method1(image):
     # mask away the greenscreen pixels from the cropped image leaving only the letters
     return cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
+def dynamic_green_range(pixels):
+    """ compute a good range of intensities to use as upper/lower bounds for color matching """
+    
+    bins = 256
+
+    #pretty much just experimenting with histograms here ...
+
+    hist = cv2.calcHist([pixels], [0], None, [bins], [0, 256])
+    import matplotlib
+    matplotlib.use('Agg')
+    from matplotlib import pyplot as plt
+    plt.figure()
+    plt.title(sys.argv[1])
+    plt.xlabel('bins')
+    plt.ylabel('numpixls')
+    plt.plot(hist)
+    plt.xlim([0, 256])
+    plt.savefig('test/img/hist.png')
+
+    popular_green = 0 
+    pixel_count = 0
+    for i in range(bins):
+        if hist[i] > pixel_count:
+            large_green = hist[i]
+            large_bin = i
+
+    return 0,0
+
 def greenscreen_by_method2(image):
 
     # compute green channel minus blue channel (works well, not sure why!)
     green_channel = cv2.split(image)[1] - cv2.split(image)[0]
+    green_lower, green_upper = dynamic_green_range(green_channel)
 
     # compute green channel minus red channel too (works badly, no idea!)
     #green_channel = green_channel - cv2.split(im)[2]
 
     # take a totally arbitrary range of single channel intensities which seems to capture 
     # the greenscreen area
-    green_pixels = cv2.inRange(green_channel, np.array([50], np.uint8), np.array([200], np.uint8))
+    green_pixels = cv2.inRange(green_channel, np.array([40], np.uint8), np.array([160], np.uint8))
+    #green_pixels = cv2.inRange(green_channel, green_lower, green_upper)
 
     out_im, green_mask = crop_to_greenscreen(image, green_pixels)
-    
+   
     # create and execute mask from temp img to discard all greenscreen pixels on original img
     return cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
 
 if __name__ == '__main__':
-    outfile = 'test/img/out_%s.png'
+    #outfile = 'test/img/out.png'
 
-    # load image file and convert it to HSV colorspace
+    outfile = '%s_out.png' % (sys.argv[1].split('.')[0])
+    print outfile
+
     source_im = cv2.imread(sys.argv[1], -1)
+
     im = np.copy(source_im)
 
-    cv2.imwrite(outfile % (1), greenscreen_by_method1(im))
-    cv2.imwrite(outfile % (2), greenscreen_by_method2(im))
-
-
+    #cv2.imwrite(outfile % (1), greenscreen_by_method1(im))
+    cv2.imwrite(outfile, greenscreen_by_method2(im))
