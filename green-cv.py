@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 draw_color = (27, 255, 255)
-debug = False
+debug = True
 
 def commoncolor(colors, green_thresh=0):
     # loop the color histogram for the most commonly occuring shade of green
@@ -82,6 +82,8 @@ def crop_to_greenscreen(image, green_pixels):
 
     if debug:
         cv2.drawContours(image, contours, -1, (0, 0, 255, 255), 1)
+        outfile = '%s_out.png' % (sys.argv[1].split('.')[0])
+        cv2.imwrite('%s_debug.png' % (sys.argv[1].split('.')[0]), image)
 
     # assume the biggest one is the greenscreen
     lpoly = largest_poly(contours)
@@ -146,7 +148,7 @@ def greenscreen_by_method2(image):
 
     # take a totally arbitrary range of single channel intensities which seems to capture 
     # the greenscreen area
-    green_pixels = cv2.inRange(green_channel, np.array([40], np.uint8), np.array([160], np.uint8))
+    green_pixels = cv2.inRange(green_channel, np.array([40], np.uint8), np.array([175], np.uint8))
     #green_pixels = cv2.inRange(green_channel, green_lower, green_upper)
 
     out_im, green_mask = crop_to_greenscreen(image, green_pixels)
