@@ -98,7 +98,6 @@ def greenscreen_by_method1(image):
     return cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
 def save_bgr_hist(image):
-
     plt.figure()
     plt.title('histogram for %s' % (sys.argv[1]))
     plt.xlabel('pixel value')
@@ -151,7 +150,7 @@ def greenscreen_by_method2(image):
 
     # compute green channel minus blue channel (works well, not sure why!)
     green_channel = cv2.split(image)[1] - cv2.split(image)[0]
-    green_lower, green_upper = dynamic_green_range(green_channel)
+    #green_lower, green_upper = dynamic_green_range(green_channel)
 
     # compute green channel minus red channel too (works badly, no idea!)
     #green_channel = green_channel - cv2.split(im)[2]
@@ -185,9 +184,10 @@ if __name__ == '__main__':
 
     source_im = cv2.imread(sys.argv[1], -1)
 
-    save_bgr_hist(source_im)
+    work_im = np.copy(source_im)
+
+    work_im = greenscreen_by_method3(work_im)
+    save_bgr_hist(work_im)
     #gen_3d_hist(source_im)
 
-    im = np.copy(source_im)
-
-    cv2.imwrite(outfile, greenscreen_by_method3(im))
+    cv2.imwrite(outfile, work_im)
