@@ -1,5 +1,8 @@
 import cv2
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 import sys
 
 draw_color = (27, 255, 255)
@@ -93,6 +96,7 @@ def crop_to_greenscreen(image, green_pixels):
     return get_cropped_img(source_im, lpoly), 255 - get_cropped_img(green_pixels, lpoly)
 
 def greenscreen_by_method1(image):
+    """ first method for words, doesn't work well at all, just here for posterity """
     # for HSV colorspace
     #im = cv2.cvtColor(source_im, cv2.COLOR_BGR2HSV)
     #l_green = np.array([45,0,0], np.uint8)
@@ -109,6 +113,30 @@ def greenscreen_by_method1(image):
     # mask away the greenscreen pixels from the cropped image leaving only the letters
     return cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
+def save_bgr_hist(image):
+
+    plt.figure()
+    plt.title('histogram for %s' % (sys.argv[1]))
+    plt.xlabel('pixel value')
+    plt.ylabel('pixel count')
+
+    for chan, color in zip(cv2.split(image), ('b','g','r')):
+        hist = cv2.calcHist([chan], [0], None, [256], [0, 256])
+        plt.plot(hist, color=color)
+        plt.xlim([0, 256])
+
+    outfile = '%s_hist.png' % (sys.argv[1].split('.')[0])
+    print 'writing %s' % (outfile)
+    plt.savefig(outfile)
+
+def gen_3d_hist(image):
+    hist = cv2.calcHist([image], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+    print "3D histogram shape: %s, with %d values" % (hist.shape, hist.flatten().shape[0])
+    np.set_printoptions(suppress=True)
+    print hist
+    import pdb
+    pdb.set_trace()
+
 def dynamic_green_range(pixels):
     """ compute a good range of intensities to use as upper/lower bounds for color matching """
     
@@ -117,9 +145,6 @@ def dynamic_green_range(pixels):
     #pretty much just experimenting with histograms here ...
 
     hist = cv2.calcHist([pixels], [0], None, [bins], [0, 256])
-    import matplotlib
-    matplotlib.use('Agg')
-    from matplotlib import pyplot as plt
     plt.figure()
     plt.title(sys.argv[1])
     plt.xlabel('bins')
@@ -138,6 +163,7 @@ def dynamic_green_range(pixels):
     return 0,0
 
 def greenscreen_by_method2(image):
+    """ improved greenscreen method works well for words """
 
     # compute green channel minus blue channel (works well, not sure why!)
     green_channel = cv2.split(image)[1] - cv2.split(image)[0]
@@ -157,15 +183,27 @@ def greenscreen_by_method2(image):
     return cv2.bitwise_and(out_im, out_im, mask=green_mask)
 
 
-if __name__ == '__main__':
-    #outfile = 'test/img/out.png'
+def greenscreen_by_method3(image):
+    """ experimenting with techniques for full body greenscreen """
+    for i in range(len(image)):
+        for j in range(len(image[i])):
+            pixel = image[i][j]
+            if pixel[1] > pixel[0] and pixel[1] > pixel[2]:
+                continue
+            else:
+                image[i][j] = np.array([0,0,0,255], np.uint8)
 
+    return image
+
+
+if __name__ == '__main__':
     outfile = '%s_out.png' % (sys.argv[1].split('.')[0])
-    print outfile
 
     source_im = cv2.imread(sys.argv[1], -1)
 
+    save_bgr_hist(source_im)
+    #gen_3d_hist(source_im)
+
     im = np.copy(source_im)
 
-    #cv2.imwrite(outfile % (1), greenscreen_by_method1(im))
-    cv2.imwrite(outfile, greenscreen_by_method2(im))
+    cv2.imwrite(outfile, greenscreen_by_method3(im))
