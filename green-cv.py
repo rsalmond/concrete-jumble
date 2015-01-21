@@ -168,6 +168,8 @@ def greenscreen_by_method2(image):
 
 def greenscreen_by_method3(image):
     """ experimenting with techniques for full body greenscreen """
+
+    # rip out every pixel that isn't primarily green
     for i in range(len(image)):
         for j in range(len(image[i])):
             pixel = image[i][j]
@@ -176,8 +178,32 @@ def greenscreen_by_method3(image):
             else:
                 image[i][j] = np.array([0,0,0,255], np.uint8)
 
-    return image
+    
+    tmp_green = cv2.split(image)[1]
+    #contours, hierarchy = cv2.findContours(tmp_green, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+    big_green_rows = []
+    start = False
+
+    average_green = tmp_green.mean()
+
+    # trying to find a way to help findcontours out by cropping the green in another way
+    # think I need more test pictures ...
+
+    for row in range(len(tmp_green)):
+        if tmp_green[row].mean() > average_green:
+            if not start:
+                start = row
+            image[row] = np.array([0], np.uint8) * len(tmp_green[row])
+        else:
+            if start:
+                big_green_rows.append([start, row])
+                start = False
+                continue
+
+    print big_green_rows
+
+    return image
 
 if __name__ == '__main__':
     outfile = '%s_out.png' % (sys.argv[1].split('.')[0])
