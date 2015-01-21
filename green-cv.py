@@ -8,22 +8,6 @@ import sys
 draw_color = (27, 255, 255)
 debug = True
 
-def commoncolor(colors, green_thresh=0):
-    # loop the color histogram for the most commonly occuring shade of green
-    occurances = 0
-    colcode = ''
-    green_score = 0
-    colcount = 0
-    for count, rgb in colors:
-        colcount += 1
-        if is_green(rgb):
-            if count > occurances and greenness(rgb) > green_thresh:
-                occurances = count
-                colcode = hexencode(rgb)
-                green_score = greenness(rgb)
-
-    return colcode
-
 def largest_poly(contours):
 
     biggest_blob = np.array([],np.int32)
